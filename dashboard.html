@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Diya & Sojo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root{--gold:#C9A84C;--dark:#1C1208;--cream:#FAF7F2;--text:#2C2010;--border:rgba(201,168,76,.3)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
+#login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;background:linear-gradient(160deg,#120C04,#1C1208)}
+.login-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.5em;color:var(--gold);margin-bottom:.5rem;text-transform:uppercase}
+.login-names{font-family:'Cormorant Garamond',serif;font-size:2.5rem;color:#fff;margin-bottom:2.5rem}
+.login-input{width:100%;max-width:300px;padding:1rem;background:rgba(255,255,255,.07);border:1px solid rgba(201,168,76,.3);color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;outline:none;margin-bottom:1rem;border-radius:2px}
+.login-btn{width:100%;max-width:300px;padding:1rem;background:var(--gold);border:none;color:#fff;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.4em;cursor:pointer}
+.login-err{font-size:13px;color:#ff6b6b;margin-top:.5rem;min-height:1rem}
+#dashboard{display:none;padding:1.5rem}
+.db-header{background:var(--dark);padding:1.5rem;margin:-1.5rem -1.5rem 1.5rem;text-align:center}
+.db-header h1{font-family:'Cormorant Garamond',serif;font-size:1.75rem;color:#fff}
+.db-header p{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.4em;color:var(--gold);text-transform:uppercase;margin-top:.25rem}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border-radius:4px;padding:1.25rem;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.stat-num{font-family:'Cormorant Garamond',serif;font-size:2.5rem;color:var(--text);line-height:1}
+.stat-label{font-family:'Cinzel',serif;font-size:8px;letter-spacing:.35em;color:var(--gold);text-transform:uppercase;margin-top:.35rem}
+.section-card{background:#fff;border-radius:4px;padding:1.25rem;margin-bottom:1rem;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.sec-title{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.4em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.link-gen-row{display:flex;gap:.5rem;margin-bottom:.75rem}
+.link-input{flex:1;padding:.75rem;border:1px solid var(--border);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;border-radius:2px}
+.link-input:focus{border-color:var(--gold)}
+.link-btn{padding:.75rem 1rem;background:var(--gold);border:none;color:#fff;font-family:'Cinzel',serif;font-size:9px;letter-spacing:.3em;cursor:pointer;border-radius:2px;white-space:nowrap}
+.link-result{background:#f5f0e8;padding:.75rem;border-radius:2px;font-size:12px;color:var(--text);word-break:break-all;margin-bottom:.5rem;display:none}
+.link-share-btns{display:flex;gap:.5rem;display:none}
+.share-btn{flex:1;padding:.6rem;border:1px solid var(--border);background:transparent;font-family:'Cinzel',serif;font-size:8px;letter-spacing:.3em;cursor:pointer;border-radius:2px;color:var(--text)}
+.share-btn.wa{background:var(--gold);color:#fff;border-color:var(--gold)}
+.filter-btns{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem}
+.filter-btn{padding:.5rem .85rem;border:1px solid var(--border);background:transparent;font-family:'Cinzel',serif;font-size:8px;letter-spacing:.3em;cursor:pointer;border-radius:2px;color:var(--text);transition:all .2s}
+.filter-btn.active{background:var(--gold);color:#fff;border-color:var(--gold)}
+.rsvp-item{border-bottom:1px solid rgba(0,0,0,.05);padding:.85rem 0}
+.rsvp-item:last-child{border-bottom:none}
+.rsvp-name{font-family:'Cormorant Garamond',serif;font-size:1.15rem;color:var(--text)}
+.rsvp-detail{font-size:12px;color:#888;margin-top:.2rem}
+.rsvp-events{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.4rem}
+.ev-tag{font-size:10px;padding:.2rem .6rem;background:#f5f0e8;border-radius:20px;color:var(--text)}
+.export-btn{width:100%;padding:1rem;background:var(--dark);border:none;color:var(--gold);font-family:'Cinzel',serif;font-size:9px;letter-spacing:.4em;cursor:pointer;margin-top:.75rem;border-radius:2px}
+.empty-state{font-family:'Cormorant Garamond',serif;font-style:italic;color:#aaa;text-align:center;padding:1rem 0}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <p class="login-title">DigiWed Dashboard</p>
+  <p class="login-names">Diya &amp; Sojo</p>
+  <input type="password" id="pw-input" class="login-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPw()">
+  <button class="login-btn" onclick="checkPw()">LOGIN</button>
+  <p class="login-err" id="login-err"></p>
+</div>
+
+<div id="dashboard">
+  <div class="db-header">
+    <h1>Diya &amp; Sojo</h1>
+    <p>RSVP Dashboard</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total RSVPs</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-attending">0</div><div class="stat-label">Attending</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-guests">0</div><div class="stat-label">Total Guests</div></div>
+    <div class="stat-card"><div class="stat-num" id="stat-events">4</div><div class="stat-label">Events</div></div>
+  </div>
+
+  <div class="section-card">
+    <div class="sec-title">Personalised Link</div>
+    <div class="link-gen-row">
+      <input type="text" id="guest-name-input" class="link-input" placeholder="Guest name...">
+      <button class="link-btn" onclick="generateLink()">GENERATE</button>
+    </div>
+    <div class="link-result" id="link-result"></div>
+    <div class="link-share-btns" id="link-share-btns">
+      <button class="share-btn" onclick="copyLink()">COPY</button>
+      <button class="share-btn wa" onclick="shareWa()">WHATSAPP</button>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="sec-title">RSVP Responses</div>
+    <div class="filter-btns">
+      <button class="filter-btn active" onclick="filterRsvp('all',this)">All</button>
+      <button class="filter-btn" onclick="filterRsvp('Engagement',this)">Engagement</button>
+      <button class="filter-btn" onclick="filterRsvp('Chanthamcharth',this)">Chanthamcharth</button>
+      <button class="filter-btn" onclick="filterRsvp('Wedding',this)">Wedding</button>
+      <button class="filter-btn" onclick="filterRsvp('Reception',this)">Reception</button>
+    </div>
+    <div id="rsvp-list"></div>
+    <button class="export-btn" onclick="exportCsv()">EXPORT CSV</button>
+  </div>
+</div>
+
+<script>
+const PASSWORD = 'diyasojo2026';
+const BASE_URL = 'https://murshid161-sketch.github.io/Diyawedssojo/';
+const RSVP_PATH = 'diya-sojo/rsvp';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDummyKeyReplace",
+  authDomain: "yaseen-jumana-wedding.firebaseapp.com",
+  databaseURL: "https://yaseen-jumana-wedding-default-rtdb.firebaseio.com",
+  projectId: "yaseen-jumana-wedding",
+  storageBucket: "yaseen-jumana-wedding.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:0000000000000000"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+function checkPw(){
+  const pw = document.getElementById('pw-input').value;
+  if(pw === PASSWORD){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    loadRsvps();
+  } else {
+    document.getElementById('login-err').textContent='Incorrect password.';
+  }
+}
+
+let allRsvps = [];
+function loadRsvps(){
+  db.ref(RSVP_PATH).on('value', snap=>{
+    allRsvps = [];
+    snap.forEach(c=>allRsvps.push({id:c.key,...c.val()}));
+    updateStats();
+    renderList(allRsvps);
+  });
+}
+function updateStats(){
+  document.getElementById('stat-total').textContent = allRsvps.length;
+  const attending = allRsvps.filter(r=>r.attending!==false).length;
+  document.getElementById('stat-attending').textContent = attending;
+  const guests = allRsvps.reduce((s,r)=>s+(r.totalMembers||r.members||1),0);
+  document.getElementById('stat-guests').textContent = guests;
+}
+function renderList(list){
+  const el = document.getElementById('rsvp-list');
+  if(!list.length){ el.innerHTML='<p class="empty-state">No RSVPs yet.</p>'; return; }
+  el.innerHTML = list.map(r=>`
+    <div class="rsvp-item">
+      <div class="rsvp-name">${r.name}</div>
+      <div class="rsvp-detail">${r.time||''} · ${r.totalMembers||1} guest(s)</div>
+      <div class="rsvp-events">${(r.events||[]).map(e=>`<span class="ev-tag">${e}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
+function filterRsvp(ev, btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = ev==='all' ? allRsvps : allRsvps.filter(r=>(r.events||[]).includes(ev));
+  renderList(filtered);
+}
+
+let generatedLink = '';
+function generateLink(){
+  const name = document.getElementById('guest-name-input').value.trim();
+  if(!name) return;
+  generatedLink = BASE_URL + '?guest=' + encodeURIComponent(name);
+  document.getElementById('link-result').textContent = generatedLink;
+  document.getElementById('link-result').style.display='block';
+  document.getElementById('link-share-btns').style.display='flex';
+}
+function copyLink(){ navigator.clipboard.writeText(generatedLink).then(()=>alert('Copied!')); }
+function shareWa(){ window.open('https://wa.me/?text='+encodeURIComponent(generatedLink),'_blank'); }
+
+function exportCsv(){
+  const rows = [['Name','Events','Guests','Time']];
+  allRsvps.forEach(r=>rows.push([r.name,(r.events||[]).join('; '),r.totalMembers||1,r.time||'']));
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'diya-sojo-rsvp.csv';
+  a.click();
+}
+</script>
+</body>
+</html>
